@@ -3,6 +3,7 @@ package com.lufficc.spring.example.jpa.models;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import javax.persistence.*;
+import java.util.Date;
 
 /**
  * Created by lufficc
@@ -17,6 +18,8 @@ public class Post extends BaseModel {
     private String content;
 
     private String category;
+
+    private Date createdAt;
 
     @JsonIgnore
     @ManyToOne
@@ -53,5 +56,13 @@ public class Post extends BaseModel {
 
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public Date getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Date createdAt) {
+        this.createdAt = createdAt;
     }
 }
