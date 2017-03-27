@@ -1,11 +1,13 @@
 package com.lufficc.spring.example.jpa.controlllers;
 
-import com.lufficc.spring.example.jpa.models.QCategory;
 import com.lufficc.spring.example.jpa.models.QPost;
 import com.lufficc.spring.example.jpa.models.QUser;
 import com.lufficc.spring.example.jpa.models.User;
+import com.lufficc.spring.example.jpa.repositories.PostRepository;
 import com.lufficc.spring.example.jpa.repositories.UserRepository;
 import com.querydsl.core.types.Predicate;
+import com.querydsl.core.types.dsl.ComparableExpressionBase;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -20,6 +22,7 @@ import javax.annotation.PostConstruct;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,11 +39,13 @@ public class JpaController {
 	private EntityManager entityManager;
 
 	private final UserRepository userRepository;
+	private final PostRepository postRepository;
 	private JPAQueryFactory queryFactory;
 
 	@Autowired
-	public JpaController(UserRepository userRepository) {
+	public JpaController(UserRepository userRepository, PostRepository postRepository) {
 		this.userRepository = userRepository;
+		this.postRepository = postRepository;
 	}
 
 	@PostConstruct
@@ -51,7 +56,6 @@ public class JpaController {
 	@GetMapping("/users/emails")
 	public Object userEmails() {
 		QUser user = QUser.user;
-		QPost post = QPost.post;
 		userRepository.findAll(user.name.eq("lufifcc"));
 		userRepository.findAll(
 				user.email.endsWith("@gmail.com")
@@ -127,23 +131,54 @@ public class JpaController {
 	public Object postCategoryMax() {
 		QUser user = QUser.user;
 		QPost post = QPost.post;
-		QCategory category = QCategory.category;
 		NumberExpression<Integer> java = post.category
 				.name.lower().when("java").then(1).otherwise(0);
 		NumberExpression<Integer> python = post.category
 				.name.lower().when("python").then(1).otherwise(0);
 		return queryFactory.selectFrom(user)
 				.leftJoin(user.posts, post)
+				.select(user.name, user.id, java.sum(), python.sum(), post.count())
 				.groupBy(user.id)
-				.select(user.name, user.id, java.count(), python.count())
 				.orderBy(user.name.desc())
 				.fetch()
 				.stream()
 				.map(tuple -> {
 					Map<String, Object> map = new LinkedHashMap<>();
 					map.put("username", tuple.get(user.name));
-					map.put("java_count", tuple.get(java.count()));
-					map.put("python_count", tuple.get(python.count()));
+					map.put("java_count", tuple.get(java.sum()));
+					map.put("python_count", tuple.get(python.sum()));
+					map.put("total_count", tuple.get(post.count()));
+					return map;
+				}).collect(Collectors.toList());
+	}
+
+	@GetMapping("posts")
+	public Object posts() {
+		return postRepository.findAll();
+	}
+
+	@GetMapping("posts-summary")
+	public Object postsSummary() {
+		QPost post = QPost.post;
+		ComparableExpressionBase<?> postTimePeriodsExp =
+				Expressions.dateTemplate(Date.class, "convert(date, {0})", "yyyy-mm");
+
+		NumberExpression<Integer> java = post.category
+				.name.lower().when("java").then(1).otherwise(0);
+		NumberExpression<Integer> python = post.category
+				.name.lower().when("python").then(1).otherwise(0);
+		return queryFactory.selectFrom(post)
+				.groupBy(postTimePeriodsExp)
+				.select(postTimePeriodsExp, java.sum(), python.sum(), post.count())
+				.orderBy(postTimePeriodsExp.desc())
+				.fetch()
+				.stream()
+				.map(tuple -> {
+					Map<String, Object> map = new LinkedHashMap<>();
+					map.put("time_period", tuple.get(postTimePeriodsExp));
+					map.put("java_count", tuple.get(java.sum()));
+					map.put("python_count", tuple.get(python.sum()));
+					map.put("total_count", tuple.get(post.count()));
 					return map;
 				}).collect(Collectors.toList());
 	}
