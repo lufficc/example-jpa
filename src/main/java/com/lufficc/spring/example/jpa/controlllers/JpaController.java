@@ -99,8 +99,8 @@ public class JpaController {
 
 
     @GetMapping("users")
-    public Object users(@QuerydslPredicate(root = User.class) Predicate predicate, Pageable pageable) {
-        return userRepository.findAll(predicate, pageable);
+    public Object users(@QuerydslPredicate(root = User.class) Predicate predicate) {
+        return userRepository.findAll(predicate);
     }
 
     @GetMapping("users/{user}/posts")
@@ -153,8 +153,8 @@ public class JpaController {
     }
 
     @GetMapping("posts")
-    public Object posts(@QuerydslPredicate(root = Post.class) Predicate predicate) {
-        return postRepository.findAll(predicate);
+    public Object posts(@QuerydslPredicate(root = Post.class) Predicate predicate, Pageable pageable) {
+        return postRepository.findAll(predicate, pageable);
     }
 
     @GetMapping("posts-summary")
